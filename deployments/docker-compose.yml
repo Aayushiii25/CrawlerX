@@ -1,0 +1,131 @@
+version: "3.8"
+
+services:
+  # --- Redis ---
+  redis:
+    image: redis:7-alpine
+    container_name: crawlerx-redis
+    ports:
+      - "6379:6379"
+    volumes:
+      - redis-data:/data
+      - ./redis.conf:/usr/local/etc/redis/redis.conf
+    command: redis-server /usr/local/etc/redis/redis.conf
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 3s
+      retries: 5
+    networks:
+      - crawlerx
+
+  # --- Coordinator ---
+  coordinator:
+    build:
+      context: ..
+      dockerfile: deployments/Dockerfile.coordinator
+    container_name: crawlerx-coordinator
+    ports:
+      - "8080:8080"
+    environment:
+      CRAWLERX_REDIS_ADDR: redis:6379
+      CRAWLERX_COORDINATOR_PORT: "8080"
+      CRAWLERX_CORS_ORIGINS: "http://localhost:3000"
+      CRAWLERX_LOG_LEVEL: info
+    depends_on:
+      redis:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "wget", "-q", "--spider", "http://localhost:8080/health"]
+      interval: 10s
+      timeout: 5s
+      retries: 3
+    networks:
+      - crawlerx
+
+  # --- Crawler Node 1 ---
+  crawler-1:
+    build:
+      context: ..
+      dockerfile: deployments/Dockerfile.crawler
+    container_name: crawlerx-crawler-1
+    environment:
+      CRAWLERX_REDIS_ADDR: redis:6379
+      CRAWLERX_NODE_ID: crawler-1
+      CRAWLERX_COORDINATOR_ADDR: http://coordinator:8080
+      CRAWLERX_WORKER_COUNT: "10"
+      CRAWLERX_LOG_LEVEL: info
+    volumes:
+      - crawl-data-1:/app/data
+    depends_on:
+      coordinator:
+        condition: service_healthy
+    networks:
+      - crawlerx
+
+  # --- Crawler Node 2 ---
+  crawler-2:
+    build:
+      context: ..
+      dockerfile: deployments/Dockerfile.crawler
+    container_name: crawlerx-crawler-2
+    environment:
+      CRAWLERX_REDIS_ADDR: redis:6379
+      CRAWLERX_NODE_ID: crawler-2
+      CRAWLERX_COORDINATOR_ADDR: http://coordinator:8080
+      CRAWLERX_WORKER_COUNT: "10"
+      CRAWLERX_LOG_LEVEL: info
+    volumes:
+      - crawl-data-2:/app/data
+    depends_on:
+      coordinator:
+        condition: service_healthy
+    networks:
+      - crawlerx
+
+  # --- Crawler Node 3 ---
+  crawler-3:
+    build:
+      context: ..
+      dockerfile: deployments/Dockerfile.crawler
+    container_name: crawlerx-crawler-3
+    environment:
+      CRAWLERX_REDIS_ADDR: redis:6379
+      CRAWLERX_NODE_ID: crawler-3
+      CRAWLERX_COORDINATOR_ADDR: http://coordinator:8080
+      CRAWLERX_WORKER_COUNT: "10"
+      CRAWLERX_LOG_LEVEL: info
+    volumes:
+      - crawl-data-3:/app/data
+    depends_on:
+      coordinator:
+        condition: service_healthy
+    networks:
+      - crawlerx
+
+  # --- Dashboard ---
+  dashboard:
+    build:
+      context: ..
+      dockerfile: deployments/Dockerfile.dashboard
+    container_name: crawlerx-dashboard
+    ports:
+      - "3000:3000"
+    environment:
+      NEXT_PUBLIC_API_URL: http://localhost:8080
+      NEXT_PUBLIC_WS_URL: ws://localhost:8080/ws
+    depends_on:
+      coordinator:
+        condition: service_healthy
+    networks:
+      - crawlerx
+
+volumes:
+  redis-data:
+  crawl-data-1:
+  crawl-data-2:
+  crawl-data-3:
+
+networks:
+  crawlerx:
+    driver: bridge
