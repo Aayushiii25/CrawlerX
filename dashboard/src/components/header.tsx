@@ -1,7 +1,5 @@
 "use client";
 
-import { getStatusColor } from "@/lib/utils";
-
 interface HeaderProps {
   connected: boolean;
   activeNodes: number;

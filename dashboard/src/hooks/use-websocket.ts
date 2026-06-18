@@ -11,6 +11,7 @@ export function useWebSocket() {
   const wsRef = useRef<WebSocket | null>(null);
   const reconnectTimeoutRef = useRef<NodeJS.Timeout | null>(null);
   const reconnectAttempts = useRef(0);
+  const connectRef = useRef<() => void>(() => {});
 
   const connect = useCallback(() => {
     try {
@@ -38,7 +39,7 @@ export function useWebSocket() {
           30000
         );
         reconnectAttempts.current++;
-        reconnectTimeoutRef.current = setTimeout(connect, delay);
+        reconnectTimeoutRef.current = setTimeout(() => connectRef.current(), delay);
       };
 
       ws.onerror = () => {
@@ -53,9 +54,13 @@ export function useWebSocket() {
         30000
       );
       reconnectAttempts.current++;
-      reconnectTimeoutRef.current = setTimeout(connect, delay);
+      reconnectTimeoutRef.current = setTimeout(() => connectRef.current(), delay);
     }
   }, []);
+
+  useEffect(() => {
+    connectRef.current = connect;
+  }, [connect]);
 
   useEffect(() => {
     connect();

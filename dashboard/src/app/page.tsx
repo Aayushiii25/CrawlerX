@@ -31,18 +31,20 @@ export default function Dashboard() {
 
   useEffect(() => {
     if (queueStats) {
-      setQueueHistory((prev) => {
-        const next = [
-          ...prev,
-          {
-            time: new Date().toISOString(),
-            priority: queueStats.priority_queue,
-            retry: queueStats.retry_queue,
-            dlq: queueStats.dead_letter,
-          },
-        ];
-        return next.slice(-60); // Keep last 60 data points (5 min at 5s interval)
-      });
+      setTimeout(() => {
+        setQueueHistory((prev) => {
+          const next = [
+            ...prev,
+            {
+              time: new Date().toISOString(),
+              priority: queueStats.priority_queue,
+              retry: queueStats.retry_queue,
+              dlq: queueStats.dead_letter,
+            },
+          ];
+          return next.slice(-60); // Keep last 60 data points (5 min at 5s interval)
+        });
+      }, 0);
     }
   }, [queueStats]);
 
